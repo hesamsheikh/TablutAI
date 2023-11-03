@@ -1,24 +1,27 @@
 from sklearn.model_selection import train_test_split
 import numpy as np 
 from tensorflow.keras import optimizers, callbacks
-from Models import build_model_1, build_model_2
+from Models import build_model_1, build_model_2, build_model_3
+from tensorflow.keras.models import load_model
 
-model = build_model_2()
+model = build_model_3()
+# model = load_model(r"AI\SavedModels\model_3")
 model.compile(optimizer=optimizers.Adam(1e-3),
               loss='mean_squared_error')
 model.summary()
 
-X = np.load("npys/X.npy")
-X = X.reshape((X.shape[0], X.shape[2], X.shape[3], X.shape[1]))
-Y = np.load("npys/Y.npy")
+X = np.load(r"AI\NPYs\X_last3.npy")
+X = np.transpose(X, (0, 2, 3, 1))
+Y = np.load(r"AI\NPYs\Y_last3.npy")
+
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.15, random_state=42)
 
-np.save("npys/X_test.npy", X_test)
-np.save("npys/Y_test.npy", Y_test)
+# np.save(r"AI\NPYs\X_test.npy", X_test)
+# np.save(r"AI\NPYs\Y_test.npy", Y_test)
 
 # early_stoppings = callbacks.EarlyStopping('val_loss', patience=15)
 checkpoint_callback = callbacks.ModelCheckpoint(
-    filepath="model_2",  # File path to save the model
+    filepath="AI\SavedModels\model_last3",  # File path to save the model
     monitor='val_loss',  # Metric to monitor (e.g., validation loss)
     save_best_only=True,  # Save only the best model (based on the monitored metric)
     mode='min',  # Mode can be 'min' (for loss) or 'max' (for accuracy)
@@ -27,10 +30,10 @@ checkpoint_callback = callbacks.ModelCheckpoint(
 )
 
 model.fit(X_train, Y_train,
-          batch_size=8,
-          epochs=300,
+          batch_size=4,
+          epochs=500,
           verbose=1,
-          validation_split=0.2,
+          validation_data=(X_test, Y_test),
           callbacks=[
                     # early_stoppings,
                      checkpoint_callback])
