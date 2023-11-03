@@ -1,7 +1,8 @@
 import os 
-from Utils import State, LastMoves, Entity, score_function
 import numpy as np 
-
+import sys 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from Utils import State, Entity, score_function, LastMoves
 
 class Record:
     def __init__(self, txt_path=None) -> None:

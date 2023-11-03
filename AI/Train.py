@@ -3,6 +3,7 @@ import numpy as np
 from tensorflow.keras import optimizers, callbacks
 from Models import build_model_1, build_model_2
 
+
 model = build_model_2()
 model.compile(optimizer=optimizers.Adam(1e-3),
               loss='mean_squared_error')
