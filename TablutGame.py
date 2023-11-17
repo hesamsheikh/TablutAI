@@ -173,6 +173,14 @@ class TablutGame:
     def change_player_turn(self):
         self.current_player = self.who_is_opponent_of(self.current_player)
     
+    def make_new_state(self, move_indexes:tuple):
+        i, j, new_i, new_j = move_indexes
+        new_state = deepcopy(self.state.board)
+        new_state[new_i][new_j] = new_state[i][j]
+        new_state[i][j] = State().board[i][j] 
+        state = State(new_state, last_move=self.current_player)
+        return state 
+    
     def update_board(self, move_indexes:tuple):
         """
         Update the game board with the specified move.
@@ -182,13 +190,8 @@ class TablutGame:
             moved_by: The player who made the move.
         """
         i, j, new_i, new_j = move_indexes
-        new_state = deepcopy(self.state.board)
-        new_state[new_i][new_j] = new_state[i][j]
-        new_state[i][j] = State().board[i][j] 
-        
-        # update current state and add the last state to the list of records
         self.records.append(self.state)
-        self.state = State(new_state, last_move=self.current_player)
+        self.state = self.make_new_state(move_indexes=move_indexes)
         self.check_if_move_captures(new_i, new_j)
         self.check_game_has_winner(new_i, new_j)
         self.change_player_turn()
@@ -328,13 +331,13 @@ class TablutGame:
                 draw_rect_alpha(self.screen, (0, 255, 0, 127), (j_ * CELL_SIZE, i_ * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def play(self):
-        sleep(0.001)
-        self.run_visualization()
+        # sleep(0.001)
+        # self.run_visualization()
         if self.current_player == Entity.white:
             self.white_move() 
         elif self.current_player == Entity.black:
             self.black_move()
-        pygame.display.flip()
+        # pygame.display.flip()
 
 
 class PlayMode:   
