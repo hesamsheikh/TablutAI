@@ -24,6 +24,11 @@ class Entity:
     black = "B"
     king = "K"
 
+class ServerCellType:
+    white = "WHITE"
+    black = "BLACK"
+    king = "KING"
+    empty = "EMPTY"
 class LastMoves:
     white = "W"
     black = "B"
