@@ -76,7 +76,72 @@ class State:
             string += "| " + " | ".join(row) + " |" + "\n"
             string += border  + "\n"
         return string
+
+    def if_black_captured_king(self, i, j):
+        """check if a move by black has the king captured
+        Args:
+            i (_type_): new_move_i_index
+            j (_type_): new_move_j_index
+        Returns:
+            _type_: has king been captured?
+        """        
+        if self.last_move == LastMoves.black:
+            if self.if_king_captured(i, j): return True
+        return False
     
+    def where_is_king(self):
+        """reutnr position of king"""
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                if self.board[i][j] == Entity.king:
+                    return (i,j)
+
+    def if_king_escaped(self, i, j):
+        if self.last_move == LastMoves.white:
+            if self.board[i][j] == Entity.king and State().board[i][j] == Entity.escape:
+                    return True
+        return False
+    
+    def if_king_captured(self, c_i, c_j):
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                if self.board[i][j] == Entity.king:
+                    king_location = (i,j)
+                    break
+
+        center = (len(self.board) - 1) // 2  # Calculate the center square
+        if king_location == (center, center):
+            # King is in the center square, check if it's surrounded by black pieces
+            center_neighbors = [(center - 1, center), (center + 1, center), (center, center - 1), (center, center + 1)]
+            for i, j in center_neighbors:
+                if self.board[i][j] != Entity.black:
+                    return False  # King is not surrounded on all four sides
+            return True  # King is surrounded by black pieces
+        
+        center_neighbors = [(center - 1, center), (center + 1, center), (center, center - 1), (center, center + 1)]
+        if king_location in center_neighbors:
+            ## king is near the castle, it must be surrounded by three black pieces and the castle
+            k_i, k_j = king_location
+            king_neighbors = [(k_i,k_j+1), (k_i,k_j-1), (k_i+1,k_j), (k_i-1,k_j)]
+            for i, j in king_neighbors:
+                if self.board[i][j] not in (Entity.black, Entity.castle):
+                    return False 
+            return True
+        
+        possible_directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        for rl, ud in possible_directions:
+            new_i = c_i + ud  
+            new_j = c_j + rl
+            try:
+                if self.board[new_i][new_j] == Entity.king:
+                    new_i = c_i + 2*ud  
+                    new_j = c_j + 2*rl
+                    if self.board[new_i][new_j] == Entity.black:
+                        return True
+                    break
+            except IndexError: return False
+
+
     def check_if_index_is_inside_board(self, i, j):
         ## Check whether index is inside the board
         board_size = len(self.board)
@@ -91,29 +156,15 @@ class State:
             A list of possible move tuples, each containing (i, j, new_i, new_j).
         """
         possible_states = []
-
         if for_player == Entity.white:
             piece_should_be = [Entity.white, Entity.king]
-            destination_should_be = [Entity.square, Entity.escape]
         elif for_player == Entity.black:
-            piece_should_be = [Entity.black]
-            destination_should_be = [Entity.square, Entity.escape]
+            piece_should_be = [Entity.black]        
 
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 if self.board[i][j] in piece_should_be:
-                    ## possible move  
-                    possible_directions = [(0, 1), (0, -1), (1, 0), (-1, 0)] 
-                    for rl, ud in possible_directions:
-                        counter = 0
-                        while True:
-                            counter += 1
-                            new_i = i + counter*rl  
-                            new_j = j + counter*ud
-                            if self.check_if_index_is_inside_board(new_i, new_j) and \
-                                self.board[new_i][new_j] in destination_should_be:
-                                possible_states.append((i, j, new_i, new_j))
-                            else: break
+                    possible_states.extend(self.possible_moves_for_index(i, j))
         return possible_states
     
 
@@ -128,6 +179,10 @@ class State:
         """
         possible_states = []
         destination_should_be = [Entity.square, Entity.escape]
+        black_pieces_middle_of_camp = [(0,4),(4,0),(4,8),(8,4)]
+
+        if (i,j) in black_pieces_middle_of_camp and self.board[i][j] == Entity.black:
+            destination_should_be = destination_should_be + [Entity.camp]
 
         possible_directions = [(0, 1), (0, -1), (1, 0), (-1, 0)] 
         for rl, ud in possible_directions:
@@ -138,7 +193,7 @@ class State:
                 new_j = j + counter*ud
                 if self.check_if_index_is_inside_board(new_i, new_j) and \
                     self.board[new_i][new_j] in destination_should_be:
-                    possible_states.append((new_i, new_j))
+                    possible_states.append((i, j, new_i, new_j))
                 else: break
         return possible_states
     

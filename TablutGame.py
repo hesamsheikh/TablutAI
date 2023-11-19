@@ -5,26 +5,8 @@ from time import sleep
 import pygame 
 from Utils import CELL_SIZE
 import datetime, os
-from AI.ReadyDataset import state_to_nparray, initialize_nps
-import numpy as np
-
-class NeuralNet:
-
-    def __init__(self) -> None:
-        from tensorflow.keras.models import load_model
-        self.model = load_model(r"AI\SavedModels\model_last3") 
-        self.np_camps, self.np_castle, self.np_escapes = initialize_nps()
-        
-        # Warm up
-        test_matrix = np.expand_dims(np.ones((self.model.input_shape[1:])), axis=0)
-        self.model.predict(test_matrix)
-
-    def get_state_score(self, state):
-        np_mat = state_to_nparray(self.np_camps, self.np_castle, self.np_escapes, state=state)
-        np_mat = np.expand_dims(np_mat, axis=0)
-        np_mat = np.transpose(np_mat, (0, 2, 3, 1))
-        # np_mat = np_mat.reshape((np_mat.shape[0], np_mat.shape[2], np_mat.shape[3], np_mat.shape[1]))
-        return self.model.predict(np_mat)[0][0]
+from NueralNetTensorFlow import NeuralNetTensorFlow
+from Player import Agent
 
 
 class TablutGame:
@@ -49,11 +31,16 @@ class TablutGame:
             PlayMode.user : self.user_play,
             PlayMode.random : self.random_play,
             PlayMode.next_best_nn: self.neural_net,
+            PlayMode.agent: self.play_agent
         }
         self.w_play_function = play_mode_functions[w_play_mode]
         self.b_play_function = play_mode_functions[b_play_mode]
         if self.w_play_function == self.neural_net or self.b_play_function == self.neural_net:
-            self.nn_engine = NeuralNet()
+            self.nn_engine = NeuralNetTensorFlow()
+        if self.w_play_function == self.play_agent:
+            self.agent = Agent(player=Entity.white)
+        if self.b_play_function == self.play_agent:
+            self.agent = Agent(player=Entity.black)
 
         self.records = []
         self.state = State(TablutGame.initial_state, last_move=LastMoves.initial_state)
@@ -164,14 +151,24 @@ class TablutGame:
         self.save_game_log()
 
 
-    def who_is_opponent_of(self, player):
+    @staticmethod
+    def who_is_opponent_of(player):
         if player == Entity.white or player == Entity.king:
             return Entity.black 
         if player == Entity.black: 
             return Entity.white 
+
+    @staticmethod
+    def make_new_state(state:State, current_player, move_indexes:tuple):
+        i, j, new_i, new_j = move_indexes
+        new_state = deepcopy(state.board)
+        new_state[new_i][new_j] = new_state[i][j]
+        new_state[i][j] = State().board[i][j] 
+        state = State(new_state, last_move=current_player)
+        return state 
         
     def change_player_turn(self):
-        self.current_player = self.who_is_opponent_of(self.current_player)
+        self.current_player = TablutGame.who_is_opponent_of(self.current_player)
     
     def update_board(self, move_indexes:tuple):
         """
@@ -182,79 +179,24 @@ class TablutGame:
             moved_by: The player who made the move.
         """
         i, j, new_i, new_j = move_indexes
-        new_state = deepcopy(self.state.board)
-        new_state[new_i][new_j] = new_state[i][j]
-        new_state[i][j] = State().board[i][j] 
-        
-        # update current state and add the last state to the list of records
         self.records.append(self.state)
-        self.state = State(new_state, last_move=self.current_player)
+        self.state = TablutGame.make_new_state(self.state, self.current_player, move_indexes=move_indexes)
         self.check_if_move_captures(new_i, new_j)
         self.check_game_has_winner(new_i, new_j)
         self.change_player_turn()
 
 
-    def if_black_captured_king(self, i, j):
-        if self.current_player == LastMoves.black:
-            if self.if_king_captured(i, j): return True
-        return False
-    
-    def if_king_escaped(self, i, j):
-        if self.current_player == LastMoves.white:
-            if self.state.board[i][j] == Entity.king and State().board[i][j] == Entity.escape:
-                    return True
-        return False
-    
     def if_next_player_can_move(self):
-        who_plays_next = self.who_is_opponent_of(self.current_player)
+        who_plays_next = TablutGame.who_is_opponent_of(self.current_player)
         possible_moves_for_next_player = self.state.possible_moves(who_plays_next)
         if not possible_moves_for_next_player:
             return False 
         return True
 
     def check_game_has_winner(self, i, j):
-        if self.if_black_captured_king(i, j): self.game_over(Entity.black)
-        if self.if_king_escaped(i, j): self.game_over(Entity.white)
+        if self.state.if_black_captured_king(i, j): self.game_over(Entity.black)
+        if self.state.if_king_escaped(i, j): self.game_over(Entity.white)
         if not self.if_next_player_can_move(): self.game_over(self.current_player)
-
-    def if_king_captured(self, c_i, c_j):
-        for i in range(self.board_size):
-            for j in range(self.board_size):
-                if self.state.board[i][j] == Entity.king:
-                  king_location = (i,j)
-                  break
-        center = (self.board_size - 1) // 2  # Calculate the center square
-        if king_location == (center, center):
-            # King is in the center square, check if it's surrounded by black pieces
-            center_neighbors = [(center - 1, center), (center + 1, center), (center, center - 1), (center, center + 1)]
-            for i, j in center_neighbors:
-                if self.state.board[i][j] != Entity.black:
-                    return False  # King is not surrounded on all four sides
-            return True  # King is surrounded by black pieces
-        
-        center_neighbors = [(center - 1, center), (center + 1, center), (center, center - 1), (center, center + 1)]
-        if king_location in center_neighbors:
-            ## king is near the castle, it must be surrounded by three black pieces and the castle
-            k_i, k_j = king_location
-            king_neighbors = [(k_i,k_j+1), (k_i,k_j-1), (k_i+1,k_j), (k_i-1,k_j)]
-            for i, j in king_neighbors:
-                if self.state.board[i][j] not in (Entity.black, Entity.castle):
-                    return False 
-            return True
-        
-        possible_directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        for rl, ud in possible_directions:
-            new_i = c_i + ud  
-            new_j = c_j + rl
-            try:
-                if self.state.board[new_i][new_j] == Entity.king:
-                    new_i = c_i + 2*ud  
-                    new_j = c_j + 2*rl
-                    if self.state.board[new_i][new_j] == Entity.black:
-                        return True
-                    break
-            except IndexError: return False
-
 
     def white_move(self):
         self.w_play_function()
@@ -272,12 +214,7 @@ class TablutGame:
             new_board[i][j] = State().board[i][j] 
             
             new_state = State(new_board, last_move=self.current_player)
-            new_state.score =self.nn_engine.get_state_score(new_state)
-            # for i in range(self.board_size):
-            #     for j in range(self.board_size):
-            #         if new_state.board[i][j] == Entity.king and State().board[i][j] == Entity.escape:
-            #             new_state.score = 100
-            
+            new_state.score =self.nn_engine.get_state_score(new_state)   
             possible_states.append(new_state)
         
         if self.current_player == Entity.white:
@@ -285,8 +222,10 @@ class TablutGame:
         elif self.current_player == Entity.black:
             index_of_state = min(enumerate(possible_states), key=lambda x: x[1].score)[0]
         self.update_board(possible_moves[index_of_state])
-        print(possible_states[index_of_state].score)
 
+    def play_agent(self):
+        best_agent_move = self.agent.play_best_move(self.state)
+        self.update_board(best_agent_move)
 
     def random_play(self):
         # play a random move
@@ -311,7 +250,9 @@ class TablutGame:
                         self.selected_piece = (i, j)
                 # If a piece is already selected, move it
                 elif self.selected_piece is not None:
-                    if (i,j) not in self.selected_piece_possible_moves or (i,j) == self.selected_piece:
+                    pm_l = []
+                    for pm in self.selected_piece_possible_moves: pm_l.append(pm[-2:])
+                    if (i,j) not in pm_l or (i,j) == self.selected_piece:
                         self.selected_piece = None 
                         self.selected_piece_possible_moves = None
                         continue
@@ -324,7 +265,7 @@ class TablutGame:
             i, j = self.selected_piece
             draw_rect_alpha(self.screen, (255, 0, 0, 127), (j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE))
             self.selected_piece_possible_moves = self.state.possible_moves_for_index(i, j)
-            for (i_, j_) in self.selected_piece_possible_moves:
+            for (_,_, i_, j_) in self.selected_piece_possible_moves:
                 draw_rect_alpha(self.screen, (0, 255, 0, 127), (j_ * CELL_SIZE, i_ * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def play(self):
@@ -341,11 +282,11 @@ class PlayMode:
     user = 0,
     random = 1,
     next_best_nn = 2,
+    agent = 3,
 
 if __name__=="__main__":
     while True:
-        RandomPlaySleep = 1
-        game = TablutGame(w_play_mode=PlayMode.random, b_play_mode=PlayMode.next_best_nn)
+        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random)
         while not game.game_finished:
             game.play()
         pygame.quit()
