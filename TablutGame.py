@@ -9,6 +9,9 @@ from NueralNetTensorFlow import NeuralNetTensorFlow
 from Player import Agent
 
 
+total_time_treeS = 0
+tree_use_counterS = 0
+
 class TablutGame:
     initial_state = [
     ['O', '*', '*', 'B', 'B', 'B', '*', '*', 'O'],
@@ -137,6 +140,8 @@ class TablutGame:
 
 
     def game_over(self, winner=None):
+        global tree_use_counterS
+        global total_time_treeS
         self.records.append(self.state)
         if not winner:
             print("Draw")
@@ -148,7 +153,11 @@ class TablutGame:
             self.winner = Entity.white
             print("White wins.")
         self.game_finished = True
-        self.save_game_log()
+        if self.agent:
+            if self.agent.tree_use_counter:
+                total_time_treeS += self.agent.total_time_tree
+                tree_use_counterS += self.agent.tree_use_counter
+        self.save_game_log() 
 
 
     @staticmethod
@@ -288,5 +297,5 @@ if __name__=="__main__":
     while True:
         game = TablutGame(w_play_mode=PlayMode.random, b_play_mode=PlayMode.agent)
         while not game.game_finished:
-            game.play()
+            game.play()            
         pygame.quit()

@@ -4,6 +4,7 @@ from pyvis.network import Network
 import networkx as nx
 import matplotlib.pyplot as plt
 from copy import deepcopy
+from time import time
 
 
 def mean(lst):
@@ -30,7 +31,31 @@ class Node:
         else:
             possible_moves = self.state.possible_moves(for_player=self.who_has_to_play)
         
-        ## The last move of black must be close to the king
+        # Prioritze the moves that have more probablity to win
+        if self.who_has_to_play == Entity.white:
+            new_possible_moves_list = []
+            for ndx,(i,j,new_i,new_j) in enumerate(possible_moves):
+                if (i,j) == self.state.where_is_king():
+                    new_possible_moves_list.append((i,j,new_i,new_j))
+                    del possible_moves[ndx]
+            new_possible_moves_list.extend(possible_moves)
+            possible_moves = new_possible_moves_list
+        
+        if self.who_has_to_play == Entity.black:
+            new_possible_moves_list = []
+            for ndx, (i,j,new_i,new_j) in enumerate(possible_moves):
+                index_neighbors_of_dest = [(new_i,new_j+1), (new_i,new_j-1), (new_i+1,new_j), (new_i-1,new_j)]
+                for x,y in index_neighbors_of_dest:
+                    try:
+                        if Entity.king == self.state.board[x][y]:
+                            new_possible_moves_list.append(possible_moves[ndx])
+                            del possible_moves[ndx]
+                    except IndexError:
+                        pass
+            new_possible_moves_list.extend(possible_moves)
+            possible_moves = new_possible_moves_list
+        
+        # The last move of black must be close to the king
         if self.depth == MaximumDepth-1 and self.who_has_to_play == Entity.black:
             last_moves_black = []
             for i, (_,_,dest_i,dest_j) in enumerate(possible_moves):
@@ -104,8 +129,8 @@ class Tree:
             node.generate_children()
 
             for child in node.children:
-                x = self.search_tree(child)
-                if x and node.depth % 2 == 0: 
+                node_is_successful = self.search_tree(child)
+                if node_is_successful and node.depth % 2 == 0: 
                     break
 
             children_score = [n.score for n in node.children]
@@ -152,7 +177,9 @@ class Agent:
         self.player = player
         self.steps_played = 0
         self.use_tree_threshhold = {Entity.black:0.0, Entity.white:0.0}
-        self.start_tree_after_this_many_moves = {Entity.black: 0, Entity.white: 3}
+        self.start_tree_after_this_many_moves = {Entity.black: 3, Entity.white: 3}
+        self.total_time_tree = 0 
+        self.tree_use_counter = 0
 
     def infer_nueral_net(self, state:State):
         """use nueral net to get the best move
@@ -189,10 +216,13 @@ class Agent:
             if self.player == Entity.black and king_in_the_center:
                 return self.infer_nueral_net(state)
             
+            st = time()
             tree = Tree(Node(state=state, player=self.player), maximum_depth=MaximumDepth, for_player=self.player)
             tree.search_tree(node=tree.root)
+            et = time() - st 
+            self.tree_use_counter += 1
+            self.total_time_tree += et
 
-            print(f"tree score {tree.root.score}")
             if tree.root.score > self.use_tree_threshhold[self.player]:
                 return tree.get_best_node()
             else:
