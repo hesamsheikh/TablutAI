@@ -286,7 +286,7 @@ class PlayMode:
 
 if __name__=="__main__":
     while True:
-        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random)
+        game = TablutGame(w_play_mode=PlayMode.random, b_play_mode=PlayMode.agent)
         while not game.game_finished:
             game.play()
         pygame.quit()
