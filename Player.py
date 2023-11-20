@@ -29,6 +29,20 @@ class Node:
             possible_moves = self.state.possible_moves_for_index(*king_pos)
         else:
             possible_moves = self.state.possible_moves(for_player=self.who_has_to_play)
+        
+        ## The last move of black must be close to the king
+        if self.depth == MaximumDepth-1 and self.who_has_to_play == Entity.black:
+            last_moves_black = []
+            for i, (_,_,dest_i,dest_j) in enumerate(possible_moves):
+                index_neighbors_of_dest = [(dest_i,dest_j+1), (dest_i,dest_j-1), (dest_i+1,dest_j), (dest_i-1,dest_j)]
+                for x,y in index_neighbors_of_dest:
+                    try:
+                        if Entity.king == self.state.board[x][y]:
+                            last_moves_black.append(possible_moves[i])
+                    except IndexError:
+                        pass
+            possible_moves = last_moves_black
+
         for move_tuple in possible_moves:
             i, j, new_i, new_j = move_tuple
             #create new child 
@@ -75,14 +89,24 @@ class Tree:
         if node.depth == 1 and not node.children:
             node.score *= 5
 
-        if black_wins or white_wins:
-            return
+        if black_wins:
+            if self.for_player == Entity.white:
+                return False 
+            elif self.for_player == Entity.black:
+                return True
+        elif white_wins:
+            if self.for_player == Entity.black:
+                return False 
+            elif self.for_player == Entity.white:
+                return True 
 
         if node.depth < self.maximum_depth:
             node.generate_children()
 
             for child in node.children:
-                self.search_tree(child)
+                x = self.search_tree(child)
+                if x and node.depth % 2 == 0: 
+                    break
 
             children_score = [n.score for n in node.children]
             if children_score:
@@ -128,7 +152,7 @@ class Agent:
         self.player = player
         self.steps_played = 0
         self.use_tree_threshhold = {Entity.black:0.0, Entity.white:0.0}
-        self.start_tree_after_this_many_moves = {Entity.black: 8, Entity.white: 3}
+        self.start_tree_after_this_many_moves = {Entity.black: 0, Entity.white: 3}
 
     def infer_nueral_net(self, state:State):
         """use nueral net to get the best move
