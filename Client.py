@@ -2,8 +2,19 @@ import socket
 import struct
 import json
 import sys
-from TablutGame import TablutGame, PlayMode
+import time
+
+from Player import Agent
 from Utils import Entity, State, LastMoves, ServerCellType
+
+
+def make_move(agent: Agent, state: State):
+    start = time.time()
+    x_from, y_from, x_to, y_to = agent.play_best_move(state)
+    stop = time.time()
+    print(f'Move Time: {stop-start}')
+    return  chr(y_from + ord('a')) + f'{x_from+1}', chr(y_to + ord('a')) + f'{x_to+1}'
+
 
 class Client:
     CASTLE_LOCATION = (4, 4)
@@ -21,7 +32,7 @@ class Client:
         self.server_ip = server_ip
         if self.color not in ['white', 'black']:
             raise Exception('If you play, you are either white or black.')
-        self.port = 5800 if self.color == 'white' else 5801
+        self.port, self.player = (5800, Entity.white) if self.color == 'white' else (5801, Entity.black)
         self.server_address = (self.server_ip, self.port)
 
     @staticmethod
@@ -60,19 +71,13 @@ class Client:
     def convert_board(cls, current_board):
         return [[cls.convert_cell(cell,(row_index, column_index)) for column_index, cell in enumerate(row)] for row_index, row in enumerate(current_board)]
 
-    def make_move(self, game):
-        # TODO use the best move instead of random move
-        x_from, y_from, x_to, y_to = game.__random_move(for_player=Entity.white if self.color == 'white' else Entity.black)
-        print(chr(x_from + ord('a')) + y_from, chr(x_to + ord('a')) + y_to)
-        return chr(x_from + ord('a')) + y_from, chr(x_to + ord('a')) + y_to
-
     def read_from_server(self, sock):
         len_bytes = struct.unpack('>i', self.recvall(sock, 4))[0]
         current_state_server_bytes = sock.recv(len_bytes)
         return json.loads(current_state_server_bytes)
 
-    def send_move(self, sock, game):
-        from_cell, to_cell = self.make_move(game)
+    def send_move(self, sock, agent: Agent, state: State):
+        from_cell, to_cell = make_move(agent, state)
         move_for_server = json.dumps({
             "from": from_cell,
             "to": to_cell,
@@ -83,25 +88,20 @@ class Client:
 
 
     def play_game(self, sock):
-        game = TablutGame(w_play_mode=PlayMode.next_best_nn,b_play_mode=PlayMode.next_best_nn)
-        if self.color == 'white':
-            json_current_state_server = self.read_from_server(sock)
-            current_board = json_current_state_server['board']
-            current_converted_board = self.convert_board(current_board)
-            if current_converted_board != game.state.board:
-                raise Exception('Wrong starting table.')
-            self.send_move(sock, game)
+        agent = Agent(self.player)
         while True:
+            start = time.time()
             json_current_state_server = self.read_from_server(sock)
             current_board = json_current_state_server['board']
             current_turn = json_current_state_server['turn'].lower()
             if current_turn != self.color:
                 continue
             current_converted_board = self.convert_board(current_board)
-            state = State(current_converted_board,
+            current_state = State(current_converted_board,
                           last_move=LastMoves.black if self.color == 'white' else LastMoves.white)
-            game.state = state
-            self.send_move(sock, game)
+            self.send_move(sock, agent, current_state)
+            stop = time.time()
+            print(f'Whole Time: {stop - start}')
 
 
     def main(self):
