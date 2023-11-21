@@ -9,10 +9,7 @@ from Utils import Entity, State, LastMoves, ServerCellType
 
 
 def make_move(agent: Agent, state: State):
-    start = time.time()
     x_from, y_from, x_to, y_to = agent.play_best_move(state)
-    stop = time.time()
-    print(f'Move Time: {stop-start}')
     return  chr(y_from + ord('a')) + f'{x_from+1}', chr(y_to + ord('a')) + f'{x_to+1}'
 
 
@@ -90,7 +87,6 @@ class Client:
     def play_game(self, sock):
         agent = Agent(self.player)
         while True:
-            start = time.time()
             json_current_state_server = self.read_from_server(sock)
             current_board = json_current_state_server['board']
             current_turn = json_current_state_server['turn'].lower()
@@ -100,8 +96,6 @@ class Client:
             current_state = State(current_converted_board,
                           last_move=LastMoves.black if self.color == 'white' else LastMoves.white)
             self.send_move(sock, agent, current_state)
-            stop = time.time()
-            print(f'Whole Time: {stop - start}')
 
 
     def main(self):
