@@ -29,6 +29,7 @@ class ServerCellType:
     black = "BLACK"
     king = "KING"
     empty = "EMPTY"
+
 class LastMoves:
     white = "W"
     black = "B"
