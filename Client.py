@@ -87,7 +87,10 @@ class Client:
     def play_game(self, sock):
         agent = Agent(self.player)
         while True:
-            json_current_state_server = self.read_from_server(sock)
+            try:
+                json_current_state_server = self.read_from_server(sock)
+            except TypeError:
+                return current_turn != self.color
             current_board = json_current_state_server['board']
             current_turn = json_current_state_server['turn'].lower()
             if current_turn != self.color:
@@ -96,16 +99,21 @@ class Client:
             current_state = State(current_converted_board,
                           last_move=LastMoves.black if self.color == 'white' else LastMoves.white)
             self.send_move(sock, agent, current_state)
+        return True
 
 
     def main(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             self.initiate_connection(sock)
-            self.play_game(sock)
+            won = self.play_game(sock)
+            if won:
+                print('Congratulations!!! You won.')
+            else:
+                print('You lost.')
 
 
 
 if __name__ == '__main__':
-    color, timeout, server_ip =  sys.argv[1:]
+    color, timeout, server_ip = sys.argv[1:]
     client = Client(color, timeout, server_ip)
     client.main()
