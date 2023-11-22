@@ -25,9 +25,20 @@ class TablutGame:
     ['O', '*', '*', 'B', 'B', 'B', '*', '*', 'O']
     ]
 
-    def __init__(self, w_play_mode, b_play_mode) -> None:
+    def __init__(self, w_play_mode, b_play_mode, save_game_log=False) -> None:
         """
         Initialize the Tablut game and Pygame for visualization.
+
+        Initializes the Tablut game with specified playing modes for white and black players.
+        Sets up Pygame for visual representation of the game.
+
+        Args:
+            w_play_mode (PlayMode): Play mode for the white player.
+            b_play_mode (PlayMode): Play mode for the black player.
+            save_game_log (bool, optional): Flag to enable game log saving. Defaults to False.
+
+        Returns:
+            None
         """
         self.w_play_mode , self.b_play_mode = w_play_mode, b_play_mode
         play_mode_functions = {
@@ -41,9 +52,9 @@ class TablutGame:
         if self.w_play_function == self.neural_net or self.b_play_function == self.neural_net:
             self.nn_engine = NeuralNetTensorFlow()
         if self.w_play_function == self.play_agent:
-            self.agent = Agent(player=Entity.white)
+            self.agent_w = Agent(player=Entity.white)
         if self.b_play_function == self.play_agent:
-            self.agent = Agent(player=Entity.black)
+            self.agent_b = Agent(player=Entity.black)
 
         self.records = []
         self.state = State(TablutGame.initial_state, last_move=LastMoves.initial_state)
@@ -52,6 +63,7 @@ class TablutGame:
         self.selected_piece = None
         self.current_player = Entity.white
         self.winner = None
+        self.if_save_game_log = save_game_log
 
         # Initialize Pygame
         pygame.init()
@@ -73,6 +85,21 @@ class TablutGame:
         return random.choice(possible_moves)
 
     def save_game_log(self):
+        """
+        Save the game log including move history and winner information to a text file.
+
+        This method generates a string containing the move history and winner information
+        from the game records and saves it to a text file. It includes details about each move,
+        the board state after each move, and the final winner of the game.
+
+        The file is named based on the winner, timestamp, move count, and player modes used during the game.
+
+        Args:
+            self: The Game instance to which this method belongs.
+
+        Returns:
+            None
+        """
         string = ""
         for state in self.records:
             string += f"moved_by: {state.last_move}\n"
@@ -140,8 +167,25 @@ class TablutGame:
 
 
     def game_over(self, winner=None):
+        """
+        End the game and declare the winner or a draw.
+
+        This method marks the end of the game, recording the winner or declaring a draw if no winner is specified.
+        It updates the game state to indicate the game has finished and, if an AI agent is present,
+        it saves statistical information regarding the agent's tree usage and running time.
+
+        Args:
+            self: The Game instance to which this method belongs.
+            winner (Entity, optional): The Entity representing the winner (Entity.white or Entity.black).
+                                    Defaults to None for a draw.
+
+        Returns:
+            None
+        """
+        ## These two global variables are just to calculate average tree running time, ignore
         global tree_use_counterS
         global total_time_treeS
+        
         self.records.append(self.state)
         if not winner:
             print("Draw")
@@ -153,22 +197,48 @@ class TablutGame:
             self.winner = Entity.white
             print("White wins.")
         self.game_finished = True
-        if self.agent:
-            if self.agent.tree_use_counter:
-                total_time_treeS += self.agent.total_time_tree
-                tree_use_counterS += self.agent.tree_use_counter
-        self.save_game_log() 
+
+        if self.if_save_game_log:
+            self.save_game_log() 
 
 
     @staticmethod
     def who_is_opponent_of(player):
+        """
+        Determine the opponent of a given player in the game.
+
+        This static method determines the opponent of the given player in the game.
+        It takes the current player and returns the entity representing the opposing player.
+
+        Args:
+            player (Entity): The Entity representing the current player (Entity.white or Entity.black).
+
+        Returns:
+            Entity: The Entity representing the opponent player.
+        """
         if player == Entity.white or player == Entity.king:
             return Entity.black 
         if player == Entity.black: 
             return Entity.white 
 
+
     @staticmethod
     def make_new_state(state:State, current_player, move_indexes:tuple):
+        """
+        Create a new game state based on a provided move for the current player.
+
+        This static method generates a new game state by simulating a move on the board.
+        It takes the current state, the current player, and the move indexes to determine
+        the piece movement and creates a new state reflecting the consequences of that move.
+
+        Args:
+            state (State): The current game state.
+            current_player: The Entity representing the current player (Entity.white or Entity.black).
+            move_indexes (tuple): A tuple containing the indexes of the move (i, j, new_i, new_j).
+
+        Returns:
+            State: A new game state reflecting the result of the move.
+        """
         i, j, new_i, new_j = move_indexes
         new_state = deepcopy(state.board)
         new_state[new_i][new_j] = new_state[i][j]
@@ -176,9 +246,12 @@ class TablutGame:
         state = State(new_state, last_move=current_player)
         return state 
         
+
     def change_player_turn(self):
+        """ toggle whos turn it is """
         self.current_player = TablutGame.who_is_opponent_of(self.current_player)
     
+
     def update_board(self, move_indexes:tuple):
         """
         Update the game board with the specified move.
@@ -196,13 +269,21 @@ class TablutGame:
 
 
     def if_next_player_can_move(self):
+        """ If next player cannot do any moves, return False """
         who_plays_next = TablutGame.who_is_opponent_of(self.current_player)
         possible_moves_for_next_player = self.state.possible_moves(who_plays_next)
         if not possible_moves_for_next_player:
             return False 
         return True
 
+
     def check_game_has_winner(self, i, j):
+        """Checks if the last move has made anyone winner of the game
+
+        Args:
+            i (_type_): x position of the last move
+            j (_type_): y position of the last move
+        """        
         if self.state.if_black_captured_king(i, j): self.game_over(Entity.black)
         if self.state.if_king_escaped(i, j): self.game_over(Entity.white)
         if not self.if_next_player_can_move(): self.game_over(self.current_player)
@@ -214,6 +295,18 @@ class TablutGame:
         self.b_play_function()
 
     def neural_net(self):
+        """
+        Uses a neural network-based decision-making process to determine the next move for the current player.
+
+        This function evaluates the possible moves available to the current player based on the current game state.
+        For each possible move, it creates a new board state by simulating the move and evaluates the resulting state
+        using a neural network-based scoring system. The move with the highest (for white) or lowest (for black) score
+        is chosen as the best move and applied to update the game board.
+
+        It iterates through all possible moves, evaluates them using the neural network, and selects the move with
+        the most favorable (for white) or least favorable (for black) outcome.
+        """
+
         possible_moves = self.state.possible_moves(self.current_player)
         possible_states = []
         for move_indexes in possible_moves:
@@ -232,15 +325,35 @@ class TablutGame:
             index_of_state = min(enumerate(possible_states), key=lambda x: x[1].score)[0]
         self.update_board(possible_moves[index_of_state])
 
+
     def play_agent(self):
-        best_agent_move = self.agent.play_best_move(self.state)
+        # agent plays the next move
+        if self.current_player==Entity.white:
+            best_agent_move = self.agent_w.play_best_move(self.state)
+        elif self.current_player==Entity.black:
+            best_agent_move = self.agent_b.play_best_move(self.state)
         self.update_board(best_agent_move)
+
 
     def random_play(self):
         # play a random move
         self.update_board(self.__random_move(self.current_player))
 
+
     def user_play(self):
+        """
+        Wait for the user to make a move on the game board.
+
+        This function listens for mouse input events and handles the selection and movement of pieces
+        on the game board based on the user's actions.
+
+        It allows the user to select pieces and move them according to the game rules:
+        - If a square is clicked and no piece is selected, select the piece if it belongs to the current player.
+        - If a piece is already selected, allow the user to move it to a valid destination square.
+
+        Additionally, it visually indicates the selected piece and available moves on the game board
+        by drawing semi-transparent colored squares.
+        """
         # wait for user to play
         def draw_rect_alpha(surface, color, rect):
             shape_surf = pygame.Surface(pygame.Rect(rect).size, pygame.SRCALPHA)
@@ -278,6 +391,7 @@ class TablutGame:
                 draw_rect_alpha(self.screen, (0, 255, 0, 127), (j_ * CELL_SIZE, i_ * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
     def play(self):
+        """ run visualization and play next move """
         sleep(0.001)
         self.run_visualization()
         if self.current_player == Entity.white:
@@ -288,14 +402,15 @@ class TablutGame:
 
 
 class PlayMode:   
-    user = 0,
-    random = 1,
-    next_best_nn = 2,
-    agent = 3,
+    user = 0, #user plays
+    random = 1, #moves will be random
+    next_best_nn = 2, #only uses neural net
+    agent = 3, #uses neural net and tree
+
 
 if __name__=="__main__":
     while True:
-        game = TablutGame(w_play_mode=PlayMode.random, b_play_mode=PlayMode.agent)
+        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random, save_game_log=True)
         while not game.game_finished:
             game.play()            
         pygame.quit()

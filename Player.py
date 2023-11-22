@@ -12,6 +12,15 @@ def mean(lst):
 
 class Node:     
     def __init__(self, state:State, player=Entity.white, depth=0, last_move_index=None):
+        """
+        Initializes a node in the game tree.
+
+        Args:
+            state (State): The game state associated with the node.
+            player (Entity, optional): The player to make the move at this node. Defaults to Entity.white.
+            depth (int, optional): The depth of the node in the game tree. Defaults to 0.
+            last_move_index (tuple, optional): Index of the last move made. Defaults to None.
+        """
         self.state = state
         self.who_has_to_play = player
         self.depth = depth 
@@ -21,9 +30,17 @@ class Node:
         self.last_move_index = last_move_index
 
     def update_node_id(self):
+        """
+        Update the unique identifier of the node based on its attributes.
+        """
         self.node_id = self.get_node_id()
 
     def generate_children(self):
+        """
+        Generates child nodes for the current node based on possible moves in the game.
+
+        It prioritizes moves and constraints based on the current state and player's turn.
+        """
         from TablutGame import TablutGame
         if self.depth == MaximumDepth-1 and self.who_has_to_play == Entity.white:
             king_pos = self.state.where_is_king()
@@ -79,38 +96,67 @@ class Node:
             self.children.append(child_node)
 
     def get_node_id(self):
+        """
+        Generates a unique identifier for the node based on its attributes.
+
+        Returns:
+            str: Unique identifier for the node.
+        """
         random_number = random.randint(0, 10000)
         return f"{random_number}--{self.score}-{self.depth}-{self.who_has_to_play}"  # Define a unique identifier for each node
 
 
 class Tree:
     def __init__(self, root_node:Node, maximum_depth=3, for_player=Entity.white) -> None:
+        """
+        Initializes a tree with a root node and parameters for tree search.
+
+        Args:
+            root_node (Node): The root node of the tree.
+            maximum_depth (int, optional): The maximum depth to search in the tree. Defaults to 3.
+            for_player (Entity, optional): The player for whom the search is performed. Defaults to Entity.white.
+        """
         self.root = root_node
         self.maximum_depth = maximum_depth
         self.nodes_visited = 0
         self.for_player = for_player
         self.dont_visit_siblings = False
+        
+        self.win_reward = 1
+        self.lose_penalty = -100
+
 
     def search_tree(self, node=Node):
+        """
+        Recursively explores the tree to search for the best move using minimax algorithm.
+
+        Args:
+            node (Node): The node being explored. Defaults to root node.
+
+        Returns:
+            bool: True if the current player wins; False otherwise.
+        """
         self.nodes_visited += 1
         black_wins = False
         white_wins = False
 
         if node.last_move_index:
-            i, j, new_i, new_j = node.last_move_index
+            _, _, new_i, new_j = node.last_move_index
             black_wins = node.state.if_black_captured_king(new_i, new_j)
             white_wins = node.state.if_king_escaped(new_i, new_j)
             if self.for_player == Entity.white:
                 if white_wins: 
-                    node.score = 1
+                    node.score = self.win_reward
                 elif black_wins: 
-                    node.score = -100
+                    node.score = self.lose_penalty
             elif self.for_player == Entity.black:
                 if white_wins: 
-                    node.score = -100
+                    node.score = self.lose_penalty
                 elif black_wins: 
-                    node.score = 1
+                    node.score = self.win_reward
 
+        # If the next best move wins the game, increase its score
+        #  so the tree selects the move that is closest to winning the game
         if node.depth == 1 and not node.children:
             node.score *= 5
 
@@ -146,10 +192,23 @@ class Tree:
 
 
     def get_best_node(self):
+        """
+        Gets the best node based on calculated scores in the tree.
+
+        Returns:
+            tuple: Index of the best move found in the tree.
+        """
         best_node = max(self.root.children, key=lambda x: x.score)
         return best_node.last_move_index
 
+
     def create_networkx_graph(self):
+        """
+        Creates a NetworkX graph representation of the tree.
+
+        Returns:
+            nx.DiGraph: Directed graph representing the tree nodes and connections.
+        """
         graph = nx.DiGraph()
         added_nodes = set()
 
@@ -172,22 +231,32 @@ class Tree:
 
 class Agent:
     def __init__(self, player) -> None:
+        """
+        Initializes an Agent using a neural network model for decision making.
+
+        Args:
+            player (Entity): The player type (Entity.black or Entity.white).
+        """
         from NueralNetTFLite import NeuralNetTFLite
-        self.nn_engine = NeuralNetTFLite(model_path=r"AI\nueral_net.tflite")
+        self.nn_engine = NeuralNetTFLite(model_path=r"AI\NueralNet2.tflite")
         self.player = player
         self.steps_played = 0
         self.use_tree_threshhold = {Entity.black:0.0, Entity.white:0.0}
-        self.start_tree_after_this_many_moves = {Entity.black: 3, Entity.white: 3}
+        self.start_tree_after_this_many_moves = {Entity.black: 4, Entity.white: 4}
         self.total_time_tree = 0 
         self.tree_use_counter = 0
 
+
     def infer_nueral_net(self, state:State):
-        """use nueral net to get the best move
+        """
+        Uses the neural network to infer the best move based on the current state.
+
         Args:
-            state (State): the current state we want to get best move from 
+            state (State): The current state for which the best move is to be inferred.
+
         Returns:
-            _type_: best move
-        """        
+            tuple: The best move based on the neural network's prediction.
+        """
         possible_moves = state.possible_moves(self.player)
         possible_states = []
         for move_indexes in possible_moves:
@@ -208,7 +277,17 @@ class Agent:
 
 
     def play_best_move(self, state:State):
+        """
+        Plays the best move based on the given state, using a combination of neural network and tree search.
+
+        Args:
+            state (State): The current state of the game.
+
+        Returns:
+            tuple: The best move to play based on the decision-making process (neural network or tree search).
+        """
         self.steps_played += 1
+
         center = (len(state.board) - 1) // 2
         king_in_the_center = state.where_is_king() == (center,center)
             

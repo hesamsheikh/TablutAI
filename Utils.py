@@ -4,6 +4,7 @@ import pygame
 
 CELL_SIZE = 60 
 
+### Score functions to give a score to a game board, to use in training of Neural Net
 def score_function_linear(x, x1):
     return (1/x1) * x
 
@@ -14,6 +15,7 @@ def score_function(x, x0, x1, steepness=0.5):
         return 1
     else:
         return 1 / (1 + math.exp(-steepness * (x - (x0 + x1) / 2)))
+#####################################################################################
 
 class Entity:
     square = "O"
@@ -45,7 +47,15 @@ SquareImage = {
 }
 
 class State:
+
     def __init__(self, state=None, last_move=None) -> None:
+        """
+        Initialize a state of the Tablut game.
+
+        Args:
+            state (list, optional): 2D list representing the game state. Defaults to None.
+            last_move (LastMoves, optional): Last move made in the game. Defaults to None.
+        """
         self.last_move = last_move
         if not state:
             self.board = [
@@ -63,6 +73,7 @@ class State:
             self.board = state
         self.score = None
 
+
     def __str__(self) -> str:
         border = "+---" * len(self.board[0]) + "+"
         string = f"Moved By: {self.last_move} \n"
@@ -71,6 +82,7 @@ class State:
             string += "| " + " | ".join(row) + " |" + "\n"
             string += border  + "\n"
         return string
+
 
     def if_black_captured_king(self, i, j):
         """check if a move by black has the king captured
@@ -84,6 +96,7 @@ class State:
             if self.if_king_captured(i, j): return True
         return False
     
+
     def where_is_king(self):
         """reutnr position of king"""
         for i in range(len(self.board)):
@@ -91,13 +104,34 @@ class State:
                 if self.board[i][j] == Entity.king:
                     return (i,j)
 
+
     def if_king_escaped(self, i, j):
+        """
+        Check if the king has escaped due to a move by white.
+
+        Args:
+            i (int): New move row index.
+            j (int): New move column index.
+
+        Returns:
+            bool: True if the king has escaped, False otherwise.
+        """
         if self.last_move == LastMoves.white:
             if self.board[i][j] == Entity.king and State().board[i][j] == Entity.escape:
                     return True
         return False
     
     def if_king_captured(self, c_i, c_j):
+        """
+        Check if the king has been captured.
+
+        Args:
+            c_i (int): Column index of the king.
+            c_j (int): Row index of the king.
+
+        Returns:
+            bool: True if the king has been captured, False otherwise.
+        """
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 if self.board[i][j] == Entity.king:
@@ -193,6 +227,12 @@ class State:
         return possible_states
     
     def pygame_visualize(self, screen):
+        """
+        Visualize the game state using Pygame.
+
+        Args:
+            screen: Pygame screen object.
+        """
         for row in range(len(self.board)):
             for col in range(len(self.board[0])):
                 piece = self.board[row][col]
@@ -204,6 +244,10 @@ class State:
                                 (col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE), 2)
 
     def visualize_board(self):
+        """
+        Visualize the game board using Pillow (PIL) library.
+        Displays the board using the default image viewer.
+        """
         white_img_path = Image.open(r"D:\tablut_bot\Assets\w.png")
         black_img_path = Image.open(r"D:\tablut_bot\Assets\b.png")
         king_img_path = Image.open(r"D:\tablut_bot\Assets\k.png")
