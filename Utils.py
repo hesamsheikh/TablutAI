@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 import math 
 import pygame
+import os 
 
 CELL_SIZE = 60 
 
@@ -41,15 +42,16 @@ def resize_image(original_image):
     # Scale the image to fit within the cell size while maintaining aspect ratio
     return pygame.transform.scale(original_image, (CELL_SIZE, CELL_SIZE))
 
+assets_path = "Assets"
 SquareImage = {
     # "W": image of white piece
-    Entity.white: resize_image(pygame.image.load(r"Assets\w.png")),
-    Entity.black: resize_image(pygame.image.load(r"Assets\b.png")),
-    Entity.king: resize_image(pygame.image.load(r"Assets\k.png")),
-    Entity.square: resize_image(pygame.image.load(r"Assets\e.png")),
-    Entity.escape: resize_image(pygame.image.load(r"Assets\escape.png")),
-    Entity.castle: resize_image(pygame.image.load(r"Assets\castle.png")),
-    Entity.camp: resize_image(pygame.image.load(r"Assets\camp.png"))
+    Entity.white: resize_image(pygame.image.load(os.path.join(assets_path, "w.png"))),
+    Entity.black: resize_image(pygame.image.load(os.path.join(assets_path, "b.png"))),
+    Entity.king: resize_image(pygame.image.load(os.path.join(assets_path, "k.png"))),
+    Entity.square: resize_image(pygame.image.load(os.path.join(assets_path, "e.png"))),
+    Entity.escape: resize_image(pygame.image.load(os.path.join(assets_path, "escape.png"))),
+    Entity.castle: resize_image(pygame.image.load(os.path.join(assets_path, "castle.png"))),
+    Entity.camp: resize_image(pygame.image.load(os.path.join(assets_path, "camp.png")))
 }
 
 class State:

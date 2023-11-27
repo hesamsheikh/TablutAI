@@ -5,6 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from copy import deepcopy
 from time import time
+import os 
 
 
 def mean(lst):
@@ -238,7 +239,7 @@ class Agent:
             player (Entity): The player type (Entity.black or Entity.white).
         """
         from NueralNetTFLite import NeuralNetTFLite
-        self.nn_engine = NeuralNetTFLite(model_path=r"AI\NueralNet2.tflite")
+        self.nn_engine = NeuralNetTFLite(model_path=os.path.join("AI","NueralNet2.tflite"))
         self.player = player
         self.steps_played = 0
         self.use_tree_threshhold = {Entity.black:0.0, Entity.white:0.0}
