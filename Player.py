@@ -1,11 +1,9 @@
 from Utils import Entity, State
 import random
-from pyvis.network import Network
-import networkx as nx
-import matplotlib.pyplot as plt
 from copy import deepcopy
 from time import time
 import os 
+import json
 
 
 def mean(lst):
@@ -55,8 +53,9 @@ class Node:
             for ndx,(i,j,new_i,new_j) in enumerate(possible_moves):
                 if (i,j) == self.state.where_is_king():
                     new_possible_moves_list.append((i,j,new_i,new_j))
-                    del possible_moves[ndx]
-            new_possible_moves_list.extend(possible_moves)
+            for pm in possible_moves:
+                if pm not in new_possible_moves_list:
+                    new_possible_moves_list.append(pm)
             possible_moves = new_possible_moves_list
         
         if self.who_has_to_play == Entity.black:
@@ -177,7 +176,7 @@ class Tree:
 
             for child in node.children:
                 node_is_successful = self.search_tree(child)
-                if node_is_successful and node.depth % 2 == 0: 
+                if node_is_successful==True and node.depth % 2 == 0: 
                     break
 
             children_score = [n.score for n in node.children]
@@ -203,31 +202,60 @@ class Tree:
         return best_node.last_move_index
 
 
-    def create_networkx_graph(self):
+    def create_and_save_pyvis_network(self, file_name="tree_visualization.html"):
         """
-        Creates a NetworkX graph representation of the tree.
+        Creates and saves a Pyvis network representation of the entire tree to an HTML file.
 
-        Returns:
-            nx.DiGraph: Directed graph representing the tree nodes and connections.
+        Args:
+            file_name (str): Name of the HTML file to save the visualization. Default is "tree_visualization.html".
         """
-        graph = nx.DiGraph()
+        from pyvis.network import Network
+
+        net = Network(directed=True, layout=True)
         added_nodes = set()
 
-        def add_node_to_graph(node):
+        def add_node_to_network(node):
             node_id = node.node_id
             if node_id not in added_nodes:
-                graph.add_node(node_id)
+                net.add_node(node_id)
                 added_nodes.add(node_id)
             for child in node.children:
                 child_id = child.node_id
                 if child_id not in added_nodes:
-                    graph.add_node(child_id)
+                    net.add_node(child_id)
                     added_nodes.add(child_id)
-                graph.add_edge(node_id, child_id)
-                # add_node_to_graph(child)
+                net.add_edge(node_id, child_id)
+                add_node_to_network(child)  # Recursively traverse the entire tree
 
-        add_node_to_graph(self.root)
-        return graph
+        add_node_to_network(self.root)
+        options = {
+            "layout": {
+                "hierarchical": {
+                    "enabled": True,
+                    "direction": "UD",
+                    "sortMethod": "directed",
+                    "parentCentralization": True
+                }
+            },
+            "edges": {
+                "arrows": {"to": {"enabled": True}}
+            },
+            "physics": {
+                "enabled": False
+            },
+            "interaction": {
+                "hover": True,
+                "zoomView": True
+            },
+            "nodes": {
+                "size": 50,
+                "color": "skyblue",
+                "shape": "dot"
+            }
+        }
+        net.set_options(json.dumps(options))
+        # net.show_buttons(filter_=['layout'])  # Show the layout button in the generated HTML
+        net.write_html(file_name)
 
 
 class Agent:
@@ -299,6 +327,8 @@ class Agent:
             st = time()
             tree = Tree(Node(state=state, player=self.player), maximum_depth=MaximumDepth, for_player=self.player)
             tree.search_tree(node=tree.root)
+
+            
             et = time() - st 
             self.tree_use_counter += 1
             self.total_time_tree += et

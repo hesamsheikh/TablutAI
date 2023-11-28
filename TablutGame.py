@@ -5,7 +5,7 @@ from time import sleep
 import pygame 
 from Utils import CELL_SIZE
 import datetime, os
-from NueralNetTensorFlow import NeuralNetTensorFlow
+from NueralNetTFLite import NeuralNetTFLite
 from Player import Agent
 
 
@@ -50,7 +50,7 @@ class TablutGame:
         self.w_play_function = play_mode_functions[w_play_mode]
         self.b_play_function = play_mode_functions[b_play_mode]
         if self.w_play_function == self.neural_net or self.b_play_function == self.neural_net:
-            self.nn_engine = NeuralNetTensorFlow()
+            self.nn_engine = NeuralNetTFLite(model_path=os.path.join("AI","NueralNet2.tflite"))
         if self.w_play_function == self.play_agent:
             self.agent_w = Agent(player=Entity.white)
         if self.b_play_function == self.play_agent:
@@ -306,7 +306,7 @@ class TablutGame:
         It iterates through all possible moves, evaluates them using the neural network, and selects the move with
         the most favorable (for white) or least favorable (for black) outcome.
         """
-
+    
         possible_moves = self.state.possible_moves(self.current_player)
         possible_states = []
         for move_indexes in possible_moves:
@@ -410,7 +410,7 @@ class PlayMode:
 
 if __name__=="__main__":
     while True:
-        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random, save_game_log=True)
+        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random, save_game_log=False)
         while not game.game_finished:
             game.play()            
         pygame.quit()
