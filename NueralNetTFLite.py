@@ -1,11 +1,13 @@
 from AI.ReadyDataset import state_to_nparray, initialize_nps
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
+import tflite_runtime.interpreter as tflite
+
 
 
 class NeuralNetTFLite:
     def __init__(self, model_path=r"model.tflite") -> None:
-        self.interpreter = tf.lite.Interpreter(model_path=model_path)
+        self.interpreter = tflite.Interpreter(model_path=model_path)
         self.interpreter.allocate_tensors()
 
         # Get input and output details
