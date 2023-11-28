@@ -327,9 +327,8 @@ class Agent:
             st = time()
             tree = Tree(Node(state=state, player=self.player), maximum_depth=MaximumDepth, for_player=self.player)
             tree.search_tree(node=tree.root)
-
-            
             et = time() - st 
+            
             self.tree_use_counter += 1
             self.total_time_tree += et
 

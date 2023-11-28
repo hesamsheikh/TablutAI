@@ -198,6 +198,9 @@ class TablutGame:
             print("White wins.")
         self.game_finished = True
 
+        tree_use_counterS += self.agent_w.tree_use_counter
+        total_time_treeS += self.agent_w.total_time_tree
+
         if self.if_save_game_log:
             self.save_game_log() 
 

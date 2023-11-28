@@ -10,6 +10,10 @@ model.compile(optimizer=optimizers.Adam(1e-3),
               loss='mean_squared_error')
 model.summary()
 
+
+from keras.utils.vis_utils import plot_model
+plot_model(model, to_file='a.png', show_shapes=True, show_layer_names=True)
+
 X = np.load(r"AI\NPYs\X.npy")
 X = np.transpose(X, (0, 2, 3, 1))
 Y = np.load(r"AI\NPYs\Y.npy")
