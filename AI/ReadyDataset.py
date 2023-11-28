@@ -89,7 +89,7 @@ def state_to_nparray(state:State):
     return output_matrix
 
 if __name__ == "__main__":
-    dataset_path = "Dataset"
+    dataset_path = r"AI\GameRecords"
     dataset_files = []
     for filename in os.listdir(dataset_path): 
         if filename.endswith("txt"):
@@ -104,18 +104,18 @@ if __name__ == "__main__":
         
     np_camps, np_castle, np_escapes = initialize_nps()
 
-    total_state_matrices = []
+    Xs = []
     Ys = []
     for record in records:
         for state in record.states:
             Ys.append(state.score)
             state_matrix = state_to_nparray(state)
-            total_state_matrices.append(state_matrix)
+            Xs.append(state_matrix)
 
-    total_state_matrices = np.array(total_state_matrices)
+    Xs = np.array(Xs)
     Ys = np.array(Ys)
 
-    np.save("X.npy" ,total_state_matrices)
+    np.save("X.npy" ,Xs)
     np.save("Y.npy", Ys)
     
     ...
@@ -253,58 +253,53 @@ def state_to_nparray(np_camps, np_castle, np_escapes, state:State):
     output_matrix = np.stack((np_camps, np_castle, np_escapes, np_W, np_B, np_K), axis=0)
     return output_matrix
 
+
+def list_files(root_dir:str) -> list:
+    """takes the path of a folder and returns all txt file paths in it"""
+    txt_paths = []
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            if file.endswith('txt'):
+                txt_paths.append(os.path.join(root, file))
+    return txt_paths
+
 if __name__ == "__main__":
     np_camps, np_castle, np_escapes = initialize_nps()
 
-    dataset_path = r"AI\Dataset"
-    selfplay_path_1 = r"AI\GameRecords\1"
-    selfplay_path_2 = r"AI\GameRecords\2"
-    userplay_path = r"AI\GameRecords\user"
+    PreProvidedDatasetPath = r"AI\GameRecords\PreDataset"
+    RecordsDatasetPath = r"AI\GameRecords\RecordsDataset"
 
-    dataset_files = []
-    for filename in os.listdir(dataset_path): 
-        if filename.endswith("txt"):
-            dataset_files.append(os.path.join(dataset_path, filename))
-    self_play_files = []
-    for filename in os.listdir(selfplay_path_1): 
-        if filename.endswith("txt"):
-            self_play_files.append(os.path.join(selfplay_path_1, filename))
-    for filename in os.listdir(selfplay_path_2): 
-        if filename.endswith("txt"):
-            self_play_files.append(os.path.join(selfplay_path_2, filename))
-    for filename in os.listdir(userplay_path): 
-        if filename.endswith("txt"):
-            for _ in range(20):
-                self_play_files.append(os.path.join(userplay_path, filename))
-    
+    pre_dataset_files = list_files(PreProvidedDatasetPath)
+    records_dataset_files = list_files(RecordsDatasetPath)
+
 
     records = []
-    for df in dataset_files:
-        data_record = convert_dataset_txt_to_record(df)
+    for df in pre_dataset_files:
+        data_record = convert_dataset_txt_to_record(df, self_play=False)
         if not data_record or data_record.winner == 'D': continue
         calculate_score(data_record)
         records.append(data_record)
 
-    for spf in self_play_files:
+    for spf in records_dataset_files:
         data_record = convert_dataset_txt_to_record(spf, self_play=True)
         if not data_record or data_record.winner == 'D': continue
         calculate_score(data_record)
         records.append(data_record)
 
-    total_state_matrices = []
+    Xs = []
     Ys = []
     for record in records:
         try:
-            for state in record.states[-3:]:
+            for state in record.states:
                 Ys.append(state.score)
                 state_matrix = state_to_nparray(np_camps, np_castle, np_escapes, state)
-                total_state_matrices.append(state_matrix)
+                Xs.append(state_matrix)
         except: pass 
 
-    total_state_matrices = np.array(total_state_matrices)
+    Xs = np.array(Xs)
     Ys = np.array(Ys)
 
-    np.save(r"AI\NPYs\X_last3.npy" ,total_state_matrices)
-    np.save(r"AI\NPYs\Y_last3.npy", Ys)
+    np.save(r"AI\NPYs\X.npy" ,Xs)
+    np.save(r"AI\NPYs\Y.npy", Ys)
     
     ...

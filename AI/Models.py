@@ -37,3 +37,13 @@ def build_model_3():
     x = Dense(1, 'tanh')(x)
     m = Model(inputs=board3d, outputs=x)
     return m
+
+def build_model_4():
+    board3d = Input(shape=(9,9,6))
+    x = board3d
+    x = Flatten()(x)
+    x = Dense(64, activation='relu')(x)
+    x = Dense(16, activation='relu')(x)
+    x = Dense(1, 'tanh')(x)
+    m = Model(inputs=board3d, outputs=x)
+    return m

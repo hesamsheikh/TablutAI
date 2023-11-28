@@ -2,7 +2,6 @@ import socket
 import struct
 import json
 import sys
-import time
 
 from Player import Agent
 from Utils import Entity, State, LastMoves, ServerCellType
@@ -86,7 +85,8 @@ class Client:
 
     def play_game(self, sock):
         agent = Agent(self.player)
-        while True:
+        current_turn = 'white'
+        while 'win' not in current_turn:
             json_current_state_server = self.read_from_server(sock)
             current_board = json_current_state_server['board']
             current_turn = json_current_state_server['turn'].lower()
@@ -96,16 +96,21 @@ class Client:
             current_state = State(current_converted_board,
                           last_move=LastMoves.black if self.color == 'white' else LastMoves.white)
             self.send_move(sock, agent, current_state)
+        return current_turn[:-3] == self.color
 
 
     def main(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             self.initiate_connection(sock)
-            self.play_game(sock)
+            won = self.play_game(sock)
+            if won:
+                print('Congratulations!!! You won.')
+            else:
+                print('You lost.')
 
 
 
 if __name__ == '__main__':
-    color, timeout, server_ip =  sys.argv[1:]
+    color, timeout, server_ip = sys.argv[1:]
     client = Client(color, timeout, server_ip)
     client.main()
