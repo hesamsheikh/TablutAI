@@ -198,8 +198,8 @@ class TablutGame:
             print("White wins.")
         self.game_finished = True
 
-        tree_use_counterS += self.agent_w.tree_use_counter
-        total_time_treeS += self.agent_w.total_time_tree
+        # tree_use_counterS += self.agent_w.tree_use_counter
+        # total_time_treeS += self.agent_w.total_time_tree
 
         if self.if_save_game_log:
             self.save_game_log() 
@@ -413,7 +413,7 @@ class PlayMode:
 
 if __name__=="__main__":
     while True:
-        game = TablutGame(w_play_mode=PlayMode.agent, b_play_mode=PlayMode.random, save_game_log=False)
+        game = TablutGame(w_play_mode=PlayMode.random, b_play_mode=PlayMode.agent, save_game_log=False)
         while not game.game_finished:
             game.play()            
         pygame.quit()
