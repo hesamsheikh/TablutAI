@@ -1,6 +1,6 @@
 # Tablut AI
 
-![Tablut Game](Assets\tablut_game_example.png)
+![Tablut Game](Assets/tablut_game_example.png)
 
 This repository aims to create an AI solution for the Tablut board game, specifically for the competition held in University of Bologna's "FUNDAMENTALS OF ARTIFICIAL INTELLIGENCE Module 1" course. You can read about this board game and its rules [HERE](http://tafl.cyningstan.com/page/170/tablut) or play the game using this repo.
 
@@ -13,7 +13,7 @@ There are various AI algorithms to consider for this AI agent. Genetic Algorithm
 Our strategy involves a hybrid of a tree search algorithm we called Mean-Max, with a strong NeuralNet. 
 
 ## Mean-Max Tree
-![Mean-Max Tree](Assets\tree_example.png)
+![Mean-Max Tree](Assets/tree_example.png)
 (This image is intended to give an idea of this tree, remember that the actuall tree is made from tens of thousands of game states.)
 
 Traditional Min-Max and Alpha-Beta pruning methods  cannot be used in this problem as the opponent is a random player and may not choose the best moves that benefits it. We adopt a probabilistic approach to choose the step that has the MOST probability of ending up winning the game.
@@ -24,7 +24,7 @@ For every game state where White wins, it receives a score of 1, and for every s
 
 
 ## Neural-Net
-![Neural-Net architecture](Assets\neural_net_architecture.png)
+![Neural-Net architecture](Assets/neural_net_architecture.png)
 
 If the tree doesn't find a winning solution within two moves, the NeuralNet comes into play. The neural net assigns a score to a game state in range [-1,1]. If a game state is more favorable to white, the score will be positive, if it’s more favourable to black, the score is negative.
 
