@@ -1,6 +1,6 @@
 # Tablut AI
 
-![Tablut Game](Assets/tablut_game_example.png)
+<img src="Assets/tablut_game_example.png" alt="Tablut Game" width="400">
 
 This repository aims to create an AI solution for the Tablut board game, specifically for the competition held in University of Bologna's "FUNDAMENTALS OF ARTIFICIAL INTELLIGENCE Module 1" course. You can read about this board game and its rules [HERE](http://tafl.cyningstan.com/page/170/tablut) or play the game using this repo.
 
