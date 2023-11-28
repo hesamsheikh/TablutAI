@@ -8,4 +8,4 @@ if [ $# -ne 3 ]; then
   exit 1
 fi
 
-python Client.py $1 $2 $3
+python3 Client.py $1 $2 $3
